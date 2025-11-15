@@ -1,4 +1,4 @@
-using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames
+using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf
 Random.seed!(0)
 
 # ============== Problem 1 ==================
@@ -79,6 +79,7 @@ end
 alpha = 0.1
 test_betas = [10.0^i for i in 0:50]  # β ≥ 10^19 will lead to integer overflow. 
                                      # Using floating point numbers instead.
+formatted_betas = [@sprintf("10^%d", i) for i in 0:50]
 
 sol_exact = [linsolve_exact(alpha, β) for β in test_betas]
 sol_backslash = [linsolve_backslash(alpha, β) for β in test_betas]
@@ -95,7 +96,7 @@ cond_num = [cond([1.0 -1.0 0.0 alpha-β β;
                    0.0 0.0 0.0 0.0 1.0]) for β in test_betas]
 
 
-df = DataFrame(Beta = test_betas,
+df = DataFrame(Beta = formatted_betas,
                 x1_exact = x1_exact,
                 x1_backslash = x1_backslash,
                 rel_resid_x1 = [rel[1] for rel in relative_resid],
