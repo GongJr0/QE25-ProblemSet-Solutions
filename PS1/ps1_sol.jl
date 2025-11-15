@@ -163,7 +163,7 @@ function bisect(f, a, b; tol=1e-12, max_iter=1000)
     end
 
     for i in 1:max_iter
-        # Midpoint
+        # midpoint
         c = (a + b) / 2
         fc = f(c)
 
@@ -227,7 +227,7 @@ function consumption(p, α, σ1)
 end
 
 
-α1_values = 0.01:0.0001:0.99
+α1_values = 0.0001:0.0001:0.9999
 
 # σ = 0.2 case
 p1_solutions_02= Float64[]
