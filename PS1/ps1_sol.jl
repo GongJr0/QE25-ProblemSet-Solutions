@@ -1,4 +1,4 @@
-using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf, Roots
+using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf, Roots, LaTeXStrings
 Random.seed!(0)
 
 # ============== Problem 1 ==================
@@ -118,10 +118,12 @@ df = DataFrame(Beta = formatted_betas,
 #   over the entire range of β tested.
 
 # ============== Problem 3 ==================
-function get_p1(p_1, σ_1=0.2, σ_2=0.2)
-
-    α_2 = 0.5  # initial guess
-    α_1 = 1.0 - α_2
+function p1_objective(p_1, α_1, σ_1=0.2, σ_2=0.2)
+    if α_1 <= 0.0 || α_1 >= 1.0
+        error("α_1 must be in (0,1)")
+    end
+    
+    α_2 = 1.0 - α_1
 
     p_2 = 1.0  # Normalize p_2 and solve for p_1
 
@@ -140,7 +142,7 @@ function get_p1(p_1, σ_1=0.2, σ_2=0.2)
         lhs_denom = (alpha[i]^sigma[i]*p_1^(1-sigma[i]) + (1 - alpha[i])^sigma[i]*p_2^(1-sigma[i])) 
         m_i = (p_1 * w[i][1] + p_2 * w[i][2])
 
-        lhs += (lhs_num / lhs_denom * m_i)/p_1
+        lhs += (lhs_num / lhs_denom) * m_i
         
 
         rhs += w[i][1]
@@ -154,7 +156,7 @@ function bisect(f, a, b; tol=1e-12, max_iter=1000)
     fb = f(b)
 
     if fa * fb > 0
-        error("f(a) and f(b) must have opposite signs")
+        @warn "f(a) and f(b) must have opposite signs. f(a) = $fa, f(b) = $fb"
     end
 
     for i in 1:max_iter
@@ -179,13 +181,102 @@ function bisect(f, a, b; tol=1e-12, max_iter=1000)
     error("Maximum iterations reached without convergence")
 end
 
+function q1(p1, α1)
+    α2 = 1.0 - α1
+    p2 = 1.0
 
-p_1_sol_exact = find_zero(p -> get_p1(p), 0.1)
+    w1 = [1.0, 1.0]
+    w2 = [0.5, 1.5]
 
-p_1_sol_bisect = bisect(p -> get_p1(p), 0.1, 100.0)
+    q1 = 0.0
+    for i in 1:2
+        alpha = [α1, α2]
+        w = [w1, w2]
 
-relative_error = abs(p_1_sol_exact - p_1_sol_bisect) / abs(p_1_sol_exact)
+        m_i = (p1 * w[i][1] + p2 * w[i][2])
+        q1 += (alpha[i]^0.2 * p1^(-0.2) / (alpha[i]^0.2 * p1^(0.8) + (1 - alpha[i])^0.2 * p2^(0.8))) * m_i
+    end
+    return q1
+end
 
-println("Exact solution for p_1: ", p_1_sol_exact)
-println("Bisection solution for p_1: ", p_1_sol_bisect)
-println("Relative error between exact and bisection solutions: ", relative_error)
+function consumption(p, α, σ1)
+    p2 = 1.0
+    w1 = [1.0, 1.0]
+    w2 = [0.5, 1.5]
+    α2 = 1.0 - α
+    σ2 = σ1
+
+    lhs_num = (α^σ1*p^(-σ1))
+    lhs_denom = (α^σ1*p^(1-σ1) + (1 - α)^σ1*p2^(1-σ1))
+    m_i = (p * w1[1] + p2 * w1[2])
+
+    c1 = (lhs_num / lhs_denom) * m_i
+    return c1
+end
+
+
+# σ = 0.2 case
+α1_values = 0.01:0.01:0.99
+p1_solutions_02= Float64[]
+q1_values_02 = Float64[]
+c1_values_02 = Float64[]
+for α1 in α1_values
+    obj = p -> p1_objective(p, α1)
+    p1_sol = bisect(obj, 0.01, 1000.0; tol=1e-12, max_iter=1000)
+    push!(p1_solutions_02, p1_sol)
+
+    q1_val = q1(p1_sol, α1)
+    push!(q1_values_02, q1_val)
+
+    c1_val = consumption(p1_sol, α1, 0.2)
+    push!(c1_values_02, c1_val)
+end
+
+df_02 = DataFrame(α1 = α1_values,
+                p1 = p1_solutions_02,
+                q1 = q1_values_02,
+                c1_1 = c1_values_02)
+
+# sigma = 5.0 case
+α1_values = 0.01:0.01:0.99
+p1_solutions_5 = Float64[]
+q1_values_5 = Float64[]
+c1_values_5 = Float64[]
+for α1 in α1_values
+    obj = p -> p1_objective(p, α1, 5.0, 5.0)
+    p1_sol = bisect(obj, 0.01, 1000.0; tol=1e-12, max_iter=1000)
+    push!(p1_solutions_5, p1_sol)
+
+    q1_val = q1(p1_sol, α1)
+    push!(q1_values_5, q1_val)
+
+    c1_val = consumption(p1_sol, α1, 5.0)
+    push!(c1_values_5, c1_val)
+end
+
+df_5 = DataFrame(α1 = α1_values,
+                  p1 = p1_solutions_5,
+                  q1 = q1_values_5,
+                  c1_1 = c1_values_5)
+
+plots = Any[]
+
+p1_plot_02 = plot(
+    α1_values_02,
+    c1_values_02;
+    xlabel = L"α_1",
+    ylabel = L"c_{1,1}",
+    title = L"σ = 0.2",
+    legend = false,
+)
+push!(plots, p1_plot_02)
+p1_plot_5 = plot(
+    α1_values,
+    c1_values_5;
+    xlabel = L"α_1",
+    ylabel = L"c_{1,1}",
+    title = L"σ = 5.0",
+    legend = false,
+)
+push!(plots, p1_plot_5)
+plot(plots..., layout = (1, 2), size=(720,480))
