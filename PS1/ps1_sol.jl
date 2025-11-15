@@ -1,4 +1,4 @@
-using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf
+using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf, Roots
 Random.seed!(0)
 
 # ============== Problem 1 ==================
@@ -116,3 +116,76 @@ df = DataFrame(Beta = formatted_betas,
 #
 #   Despite an exponentially increasing cond(A), the "\" operator maintains exact accuracy
 #   over the entire range of β tested.
+
+# ============== Problem 3 ==================
+function get_p1(p_1, σ_1=0.2, σ_2=0.2)
+
+    α_2 = 0.5  # initial guess
+    α_1 = 1.0 - α_2
+
+    p_2 = 1.0  # Normalize p_2 and solve for p_1
+
+    w_1 = [1.0, 1.0]
+    w_2 = [0.5, 1.5]
+
+    alpha = [α_1, α_2]
+    sigma = [σ_1, σ_2]
+    w = [w_1, w_2]
+
+    lhs = 0.0
+    rhs = 0.0
+
+    for i in 1:2
+        lhs_num = (alpha[i]^sigma[i]*p_1^(-sigma[i])) 
+        lhs_denom = (alpha[i]^sigma[i]*p_1^(1-sigma[i]) + (1 - alpha[i])^sigma[i]*p_2^(1-sigma[i])) 
+        m_i = (p_1 * w[i][1] + p_2 * w[i][2])
+
+        lhs += (lhs_num / lhs_denom * m_i)/p_1
+        
+
+        rhs += w[i][1]
+    end
+    return lhs - rhs
+end
+
+# Find root by bisection (f(a) * f(b) ≤ 0)
+function bisect(f, a, b; tol=1e-12, max_iter=1000)
+    fa = f(a)
+    fb = f(b)
+
+    if fa * fb > 0
+        error("f(a) and f(b) must have opposite signs")
+    end
+
+    for i in 1:max_iter
+        # Midpoint
+        c = (a + b) / 2
+        fc = f(c)
+
+        # check for early stopping
+        if abs(fc) < tol || (b - a) / 2 < tol
+            return c
+        end
+
+        # preserve sign change
+        if fa * fc < 0
+            b = c
+            fb = fc
+        else
+            a = c
+            fa = fc
+        end
+    end
+    error("Maximum iterations reached without convergence")
+end
+
+
+p_1_sol_exact = find_zero(p -> get_p1(p), 0.1)
+
+p_1_sol_bisect = bisect(p -> get_p1(p), 0.1, 100.0)
+
+relative_error = abs(p_1_sol_exact - p_1_sol_bisect) / abs(p_1_sol_exact)
+
+println("Exact solution for p_1: ", p_1_sol_exact)
+println("Bisection solution for p_1: ", p_1_sol_bisect)
+println("Relative error between exact and bisection solutions: ", relative_error)
