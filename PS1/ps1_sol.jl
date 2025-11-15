@@ -115,7 +115,7 @@ df = DataFrame(Beta = formatted_betas,
 #
 #   In this example, A and b are both well-conditioned and very simple in structure.
 #   Therefore, the condition number (which measures a "worst-case" sensitivity) becomes
-#   less relevant for predicting numerical accuracy of the solution.
+#   less relevant for predicting the numerical accuracy of a solution.
 #
 #   Despite an exponentially increasing cond(A), the "\" operator maintains exact accuracy
 #   over the entire range of β tested.
