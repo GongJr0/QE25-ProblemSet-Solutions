@@ -1,9 +1,12 @@
-using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf, Roots, LaTeXStrings
+using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf, Roots, LaTeXStrings, Plots
+
+pyplot()  # Swithced backend due to dodgy rendering of LaTeX labels in default backend.
+
 Random.seed!(0)
 
 # ============== Problem 1 ==================
 function get_pois_z(n, nrep=1000, λ=1)
-    X = rand(Poisson(λ), n, nrep)     # n×nrep
+    X = rand(Poisson(λ), n, nrep)     # n × nrep
     x̄ = vec(mean(X, dims = 1))
     μ = λ
     σ = sqrt(λ)
@@ -206,20 +209,31 @@ function consumption(p, α, σ1)
     α2 = 1.0 - α
     σ2 = σ1
 
-    lhs_num = (α^σ1*p^(-σ1))
-    lhs_denom = (α^σ1*p^(1-σ1) + (1 - α)^σ1*p2^(1-σ1))
-    m_i = (p * w1[1] + p2 * w1[2])
+    lhs_num_c1 = (α^σ1*p^(-σ1))
+    lhs_denom_c1 = (α^σ1*p^(1-σ1) + (1 - α)^σ1*p2^(1-σ1))
+    m_i1 = (p * w1[1] + p2 * w1[2])
 
-    c1 = (lhs_num / lhs_denom) * m_i
-    return c1
+    c1_1 = (lhs_num_c1 / lhs_denom_c1) * m_i1
+    
+    lhs_num_c2 = (α2^σ2*p^(-σ2))
+    lhs_denom_c2 = (α2^σ2*p^(1-σ2) + (1 - α2)^σ2*p2^(1-σ2))
+    m_i2 = (p * w2[1] + p2 * w2[2])
+
+    c2_1 = (lhs_num_c2 / lhs_denom_c2) * m_i2
+
+
+
+    return c1_1, c2_1
 end
 
 
-# σ = 0.2 case
 α1_values = 0.01:0.01:0.99
+
+# σ = 0.2 case
 p1_solutions_02= Float64[]
 q1_values_02 = Float64[]
-c1_values_02 = Float64[]
+c1_1_values_02 = Float64[]
+c2_1_values_02 = Float64[]
 for α1 in α1_values
     obj = p -> p1_objective(p, α1)
     p1_sol = bisect(obj, 0.01, 1000.0; tol=1e-12, max_iter=1000)
@@ -228,20 +242,22 @@ for α1 in α1_values
     q1_val = q1(p1_sol, α1)
     push!(q1_values_02, q1_val)
 
-    c1_val = consumption(p1_sol, α1, 0.2)
-    push!(c1_values_02, c1_val)
+    c1_1_val, c2_1_val = consumption(p1_sol, α1, 0.2)
+    push!(c1_1_values_02, c1_1_val)
+    push!(c2_1_values_02, c2_1_val)
 end
 
 df_02 = DataFrame(α1 = α1_values,
                 p1 = p1_solutions_02,
                 q1 = q1_values_02,
-                c1_1 = c1_values_02)
+                c1_1 = c1_1_values_02,
+                c2_1 = c2_1_values_02)
 
 # sigma = 5.0 case
-α1_values = 0.01:0.01:0.99
 p1_solutions_5 = Float64[]
 q1_values_5 = Float64[]
-c1_values_5 = Float64[]
+c1_1_values_5 = Float64[]
+c2_1_values_5 = Float64[]
 for α1 in α1_values
     obj = p -> p1_objective(p, α1, 5.0, 5.0)
     p1_sol = bisect(obj, 0.01, 1000.0; tol=1e-12, max_iter=1000)
@@ -250,33 +266,86 @@ for α1 in α1_values
     q1_val = q1(p1_sol, α1)
     push!(q1_values_5, q1_val)
 
-    c1_val = consumption(p1_sol, α1, 5.0)
-    push!(c1_values_5, c1_val)
+    c1_1_val, c2_1_val = consumption(p1_sol, α1, 5.0)
+    push!(c1_1_values_5, c1_1_val)
+    push!(c2_1_values_5, c2_1_val)
 end
 
 df_5 = DataFrame(α1 = α1_values,
                   p1 = p1_solutions_5,
                   q1 = q1_values_5,
-                  c1_1 = c1_values_5)
+                  c1_1 = c1_1_values_5,
+                  c2_1 = c2_1_values_5)
 
-plots = Any[]
+plots_p = Any[]
 
-p1_plot_02 = plot(
-    α1_values_02,
-    c1_values_02;
-    xlabel = L"α_1",
-    ylabel = L"c_{1,1}",
-    title = L"σ = 0.2",
+# Price plots
+p1_02 = plot(
+    df_02.α1,
+    df_02.p1;
+    xlabel = L"\alpha_1",
+    ylabel = L"p_1",
+    title = "σ = 0.2",
+    titlefontsize=11,
     legend = false,
 )
-push!(plots, p1_plot_02)
-p1_plot_5 = plot(
-    α1_values,
-    c1_values_5;
-    xlabel = L"α_1",
-    ylabel = L"c_{1,1}",
-    title = L"σ = 5.0",
+
+p1_5 = plot(
+    df_5.α1,
+    df_5.p1;
+    xlabel = L"\alpha_1",
+    ylabel = L"p_1",
+    title = "σ = 5.0",
+    titlefontsize=11,
     legend = false,
 )
-push!(plots, p1_plot_5)
-plot(plots..., layout = (1, 2), size=(720,480))
+
+push!(plots_p, p1_02)
+push!(plots_p, p1_5)
+plot(plots_p..., 
+    layout = (1, 2), 
+    size=(800, 400), 
+    plot_title="Equilibrium " * L"p_1" * " vs. " * L"\alpha_1", 
+    plot_titlefontsize=14,
+    )
+
+savefig("PS1/figure/ps1_problem3_price.png")
+
+# Consumption Plots
+plots_c = Any[]
+
+c1 = plot(
+    df_02.α1,
+    df_02.c1_1;
+    xlabel = L"\alpha_1",
+    ylabel = L"c_{i,1}",
+    label = L"c_{1,1}",
+    title = "σ = 0.2",
+    titlefontsize=11,
+    legend = false,
+)
+plot!(df_02.α1, df_02.c2_1; lw=2, label=L"c_{2,1}")
+push!(plots_c, c1)
+
+c2 = plot(
+    df_5.α1,
+    df_5.c1_1;
+    xlabel = L"\alpha_1",
+    ylabel = L"c_{i,1}",
+    label = L"c_{1,1}",
+    title = "σ = 5.0",
+    titlefontsize=11,
+    legend = :outertopright,
+)
+plot!(df_5.α1, df_5.c2_1; lw=2, label=L"c_{2,1}")
+push!(plots_c, c2)
+
+plot(plots_c..., 
+    layout = (1, 2), 
+    size=(800, 400), 
+    plot_title="Equilibrium " * L"c_{i,1}" * " vs. " * L"\alpha_1", 
+    plot_titlefontsize=14,
+    )
+savefig("PS1/figure/ps1_problem3_consumption.png")
+
+print(df_02)
