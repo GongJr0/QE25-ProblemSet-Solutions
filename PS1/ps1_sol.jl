@@ -227,7 +227,7 @@ function consumption(p, α, σ1)
 end
 
 
-α1_values = 0.01:0.01:0.99
+α1_values = 0.01:0.0001:0.99
 
 # σ = 0.2 case
 p1_solutions_02= Float64[]
@@ -348,4 +348,20 @@ plot(plots_c...,
     )
 savefig("PS1/figure/ps1_problem3_consumption.png")
 
-print(df_02)
+df_02[!, :diff] = df_02.c1_1 .- df_02.c2_1
+idx_02 = argmin(abs.(df_02.diff))
+eq_02 = df_02[idx_02, [:α1, :c1_1, :c2_1, :diff]]
+
+df_5[!, :diff] = df_5.c1_1 .- df_5.c2_1
+idx_5 = argmin(abs.(df_5.diff))
+eq_5 = df_5[idx_5, [:α1, :c1_1, :c2_1, :diff]]
+
+println("Approximate equilibria within α grid increments of 0.0001:")
+println("For σ = 0.2:\n")
+
+print(eq_02, "\n\n")
+println("For σ = 5.0:\n")
+print(eq_5)
+
+
+# ============== Problem 4 ==================
