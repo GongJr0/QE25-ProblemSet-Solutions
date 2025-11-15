@@ -107,7 +107,7 @@ df = DataFrame(Beta = formatted_betas,
 
 # On the pattern of condition number relative to β:
 #
-#   For higher β (≈10^4 and above), a clear pattern emerges in cond(A) relative to β.
+#   For greater β (≈10^4 and above), a clear pattern emerges in cond(A) relative to β.
 #   We see that cond(A) ≈ √2 * β^2 = √2 * 10^(2i) for i ∈ [4, ∞). 
 #   
 #   In this case, the "\" operator is able hold perfect accuracy 
