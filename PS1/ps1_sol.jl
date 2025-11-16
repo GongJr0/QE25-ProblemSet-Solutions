@@ -1,4 +1,5 @@
-using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, DataFrames, Printf, Roots, LaTeXStrings, Plots
+using Random, Distributions, StatsPlots, StatsBase, LinearAlgebra, 
+      DataFrames, Printf, Roots, LaTeXStrings, Plots, CSV, IterativeSolvers
 
 pyplot()  # Swithced backend due to dodgy rendering of LaTeX labels in default backend.
 
@@ -365,3 +366,143 @@ print(eq_5)
 
 
 # ============== Problem 4 ==================
+
+# load DataFrame
+asset_returns = DataFrame(CSV.File("PS1/asset_returns.csv"))
+
+function get_system(μ̄, returns=asset_returns)
+
+    μ = []
+    for col in names(returns)
+        push!(μ, mean(returns[!, col]))
+    end
+    Σ = cov(Matrix(returns))
+    n = size(Σ, 1)
+
+    opt_matrix = zeros(n + 2, n + 2)
+    for i in 1:n
+        for j in 1:n
+            opt_matrix[i, j] = Σ[i, j]
+        end
+        opt_matrix[i, end-1] = μ[i]
+        opt_matrix[i, end] = 1.0
+        opt_matrix[end-1, i] = μ[i]
+        opt_matrix[end, i] = 1.0
+    end
+
+    weight_vec = fill(1/n, n)
+    λ_1 = 0.0
+    λ_2 = 0.0  # λ_2 = 1 because the current sum of weights is already 1.0
+
+    unknown_vec = vcat(weight_vec, λ_1, λ_2)
+    rhs_vec = vcat(zeros(n), μ̄, 1.0)
+    println("cond(A) = ", cond(opt_matrix))
+    return opt_matrix, rhs_vec, n
+end
+
+function solve_backslash(μ̄, returns=asset_returns; return_lambda=false)
+    A, b, n = get_system(μ̄, returns)
+    x = A \ b
+
+    if sum(x[1:n]) ≈ 1.0 == false
+        @info "Weights sum to 1.0"
+    end
+
+    if !return_lambda
+        return x[1:n]
+    end
+    return x
+end
+
+A, b, n = get_system(0.1, asset_returns)
+
+AᵀA = A' * A
+
+# diag zeroes check
+all(diag(AᵀA) .!= 0.0)  # true
+cond(AᵀA)  # ≈ 4.6769e+8
+
+# diagonal dominance check |a_i=j|= ∑|a_i≠j|
+function diag_dominance(mat)
+    n = size(mat, 1)
+    row_check = Bool[]
+    for i in 1:n
+        diag = abs(mat[i,i])
+        non_diag_sum = sum(abs.(mat[i, :])) - diag
+        push!(row_check, diag >= non_diag_sum)
+    end
+    return all(row_check)
+end
+
+diag_dominance(AᵀA)  # false
+
+# Diagonal dominance is not satisfied.
+# Cannot implement Gauss-Seidel or Jacobi methods.
+
+# Check sym and posdef
+issymmetric(AᵀA) & isposdef(AᵀA)  # true
+
+# Therefore, we can use Conjugate Gradient method.
+function solve_cg(μ̄, returns=asset_returns; return_lambda=false)
+    A, b, n = get_system(μ̄, returns)
+    AᵀA = A' * A
+    Aᵀb = A' * b
+    x = cg(AᵀA, Aᵀb)
+    if sum(x[1:n]) ≈ 1.0 == false
+        @info "Weights sum to 1.0"
+    end
+
+    if !return_lambda
+        return x[1:n]
+    end
+    return x
+end
+
+function solve_gmres(μ̄, returns=asset_returns; return_lambda=false)
+    A, b, n = get_system(μ̄, returns)
+    AᵀA = A' * A
+    Aᵀb = A' * b
+    x = gmres(AᵀA, Aᵀb)
+    if sum(x[1:n]) ≈ 1.0 == false
+        @info "Weights sum to 1.0"
+    end
+    if !return_lambda
+        return x[1:n]
+    end
+    return x
+end
+
+function rel_resid_norm(A, x, b)
+    r = A * x .- b
+    return norm(r) / norm(b)
+end
+
+
+
+μ̄_test = 0.1
+A, b, n = get_system(μ̄_test, asset_returns)
+
+weights_bs = solve_backslash(μ̄_test, asset_returns; return_lambda=true)
+sum_w_bs = sum(weights_bs[1:n])
+μ_bs = dot(mean.(eachcol(asset_returns)), weights_bs[1:n])
+rresid_bs = rel_resid_norm(A, weights_bs, b)
+
+weights_cg = solve_cg(μ̄_test, asset_returns; return_lambda=true)
+sum_w_cg = sum(weights_cg[1:n])
+μ_cg = dot(mean.(eachcol(asset_returns)), weights_cg[1:n])
+rresid_cg = rel_resid_norm(A, weights_cg, b)
+
+weights_gmres = solve_gmres(μ̄_test, asset_returns; return_lambda=true)
+sum_w_gmres = sum(weights_gmres[1:n])
+μ_gmres = dot(mean.(eachcol(asset_returns)), weights_gmres[1:n])
+rresid_gmres = rel_resid_norm(A, weights_gmres, b)
+
+df_sol = DataFrame(
+    Method = ["BS", "CG", "GMRES"],
+    RRN = [rresid_bs, rresid_cg, rresid_gmres],
+    Σw = [sum_w_bs, sum_w_cg, sum_w_gmres],
+    μ = [μ_bs, μ_cg, μ_gmres],
+)
+
+sort!(df_sol, :RRN)
+println(df_sol)
