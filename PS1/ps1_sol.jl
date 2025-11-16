@@ -370,7 +370,7 @@ print(eq_5)
 # load DataFrame
 asset_returns = DataFrame(CSV.File("PS1/asset_returns.csv"))
 
-function get_system(μ̄, returns=asset_returns)
+function get_system(μ̄, returns=asset_returns, init_weights=nothing)
 
     μ = []
     for col in names(returns)
@@ -390,7 +390,12 @@ function get_system(μ̄, returns=asset_returns)
         opt_matrix[end, i] = 1.0
     end
 
-    weight_vec = fill(1/n, n)
+    if init_weights === nothing
+        weight_vec = fill(1.0 / n, n) # equal weights if no guess
+    else
+        weight_vec = init_weights
+    end
+    
     λ_1 = 0.0
     λ_2 = 0.0  # λ_2 = 1 because the current sum of weights is already 1.0
 
@@ -400,8 +405,8 @@ function get_system(μ̄, returns=asset_returns)
     return opt_matrix, rhs_vec, n
 end
 
-function solve_backslash(μ̄, returns=asset_returns; return_lambda=false)
-    A, b, n = get_system(μ̄, returns)
+function solve_backslash(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
+    A, b, n = get_system(μ̄, returns, init_weights)
     x = A \ b
 
     if sum(x[1:n]) ≈ 1.0 == false
@@ -443,8 +448,8 @@ diag_dominance(AᵀA)  # false
 issymmetric(AᵀA) & isposdef(AᵀA)  # true
 
 # Therefore, we can use Conjugate Gradient method.
-function solve_cg(μ̄, returns=asset_returns; return_lambda=false)
-    A, b, n = get_system(μ̄, returns)
+function solve_cg(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
+    A, b, n = get_system(μ̄, returns, init_weights)
     AᵀA = A' * A
     Aᵀb = A' * b
     x = cg(AᵀA, Aᵀb)
@@ -458,8 +463,8 @@ function solve_cg(μ̄, returns=asset_returns; return_lambda=false)
     return x
 end
 
-function solve_gmres(μ̄, returns=asset_returns; return_lambda=false)
-    A, b, n = get_system(μ̄, returns)
+function solve_gmres(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
+    A, b, n = get_system(μ̄, returns, init_weights)
     AᵀA = A' * A
     Aᵀb = A' * b
     x = gmres(AᵀA, Aᵀb)
@@ -506,3 +511,46 @@ df_sol = DataFrame(
 
 sort!(df_sol, :RRN)
 println(df_sol)
+
+# Portfolio variance from the min(RRN) solution (BS)
+function get_pvar(weights, returns=asset_returns)
+    return weights' * cov(Matrix(returns)) * weights
+end
+σ²ₚ = get_pvar(weights_bs[1:n], asset_returns)
+println("\nPortfolio Variance (from BS solution): ", σ²ₚ)
+
+# Weights from the min(RRN) solution (BS)
+idx = ["Asset_$(i)" for i in 1:n]
+df_weights = DataFrame(Asset = idx, Weights = weights_bs[1:n])
+println("\nOptimal Weights (from BS solution):")
+print(df_weights)
+
+
+test_μ̄ = .01:(.1-.01)/50:.1 # 50 equidistance steps where  μ̄ ∈ [0.01, 0.1]
+
+# using BS as it provides the most accurate solution
+solutions = [solve_backslash(test_μ̄[1]; return_lambda=false)]
+σ²ₚ_list = [get_pvar(solutions[1])]
+for μ̄ in test_μ̄[2:end]
+    w = solve_backslash(μ̄; 
+    return_lambda=false, 
+    init_weights=solutions[end])
+    push!(solutions, w)
+    push!(σ²ₚ_list, get_pvar(w))
+end
+
+df_sol = DataFrame(
+    μ̄ = test_μ̄,
+    σ²ₚ = σ²ₚ_list,
+    σₚ = sqrt.(σ²ₚ_list)
+)
+
+# Efficient frontier plot
+p = scatter(
+    df_sol.σₚ,
+    df_sol.μ̄;
+    xlabel=L"\sigma_p",
+    ylabel=L"\bar{\mu}",
+    title="Efficient Frontier",
+    legend=false,
+)
