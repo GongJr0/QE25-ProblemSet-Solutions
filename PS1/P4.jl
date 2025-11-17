@@ -105,8 +105,8 @@ function solve_cg(μ̄, returns=asset_returns; return_lambda=false, init_weights
     return x
 end
 
-function precond_gmres(returns=asset_returns)
-    Σ = cov(Matrix(returns))
+function precond_gmres(A)
+    Σ = A[1:end-2, 1:end-2]  # = Σ
     n = size(Σ, 1)
 
     P = zeros(n + 2, n + 2)
@@ -123,9 +123,10 @@ end
 
 function solve_gmres(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
     A, b, n = get_system(μ̄, returns, init_weights)
-    P = precond_gmres(returns)
-    PA = P' * A
-    Pb = P' * b
+    P = precond_gmres(A)
+    P⁻¹ = inv(P)
+    PA = P⁻¹ * A
+    Pb = P⁻¹ * b
 
     x, ch = gmres(PA, Pb, log=true)
     if ch.isconverged
@@ -196,21 +197,53 @@ df_weights_GMRES = DataFrame(Asset = idx, Weights = weights_gmres[1:n])
 test_μ̄ = .01:(.1-.01)/50:.1 # 50 equidistance steps where  μ̄ ∈ [0.01, 0.1]
 
 # using BS as it provides the most accurate solution
-solutions = [solve_backslash(test_μ̄[1]; return_lambda=false)]
-σ²ₚ_list = [get_pvar(solutions[1])]
+solutions_BS = [solve_backslash(test_μ̄[1]; return_lambda=false)]
+σ²ₚ_list_BS = [get_pvar(solutions_BS[1])]
+
+# solutions_CG = [solve_cg(test_μ̄[1]; return_lambda=false)]
+# σ²ₚ_list_CG = [get_pvar(solutions_CG[1])]
+
+# solutions_GMRES = [solve_gmres(test_μ̄[1]; return_lambda=false)]
+# σ²ₚ_list_GMRES = [get_pvar(solutions_GMRES[1])]
 for μ̄ in test_μ̄[2:end]
-    w = solve_backslash(μ̄; 
+    w_bs = solve_backslash(μ̄; 
     return_lambda=false, 
-    init_weights=solutions[end])
-    push!(solutions, w)
-    push!(σ²ₚ_list, get_pvar(w))
+    init_weights=solutions_BS[end])
+    push!(solutions_BS, w_bs)
+    push!(σ²ₚ_list_BS, get_pvar(w_bs))
+
+    # w_cg = solve_cg(μ̄; 
+    # return_lambda=false, 
+    # init_weights=solutions_CG[end])
+    # push!(solutions_CG, w_cg)
+    # push!(σ²ₚ_list_CG, get_pvar(w_cg))
+
+    # w_gmres = solve_gmres(μ̄; 
+    # return_lambda=false, 
+    # init_weights=solutions_GMRES[end])
+    # push!(solutions_GMRES, w_gmres)
+    # push!(σ²ₚ_list_GMRES, get_pvar(w_gmres))
 end
 
-df_sol_test = DataFrame(
+df_sol_test_BS = DataFrame(
     μ̄ = test_μ̄,
-    σ²ₚ = σ²ₚ_list,
-    σₚ = sqrt.(σ²ₚ_list)
+    σ²ₚ = σ²ₚ_list_BS,
+    σₚ = sqrt.(σ²ₚ_list_BS)
 )
+
+# df_sol_test_CG = DataFrame(
+#     μ̄ = test_μ̄,
+#     σ²ₚ = σ²ₚ_list_CG,
+#     σₚ = sqrt.(σ²ₚ_list_CG)
+# )
+
+# df_sol_test_GMRES = DataFrame(
+#     μ̄ = test_μ̄,
+#     σ²ₚ = σ²ₚ_list_GMRES,
+#     σₚ = sqrt.(σ²ₚ_list_GMRES)
+# )
+
+#
 
 # Efficient frontier plot
 
@@ -223,10 +256,32 @@ df_sol_test = DataFrame(
         title="Efficient Frontier",
         legend=false,
     )
-savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier.png"))
+    savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_BS.png"))
+
+    # p = scatter(
+    #     df_sol_test_CG.σₚ,
+    #     df_sol_test_CG.μ̄;
+    #     xlabel=L"\sigma_p",
+    #     ylabel=L"\bar{\mu}",
+    #     title="Efficient Frontier",
+    #     legend=false,
+    # )
+    # savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_CG.png"))
+
+    # p = scatter(
+    #     df_sol_test_GMRES.σₚ,
+    #     df_sol_test_GMRES.μ̄;
+    #     xlabel=L"\sigma_p",
+    #     ylabel=L"\bar{\mu}",
+    #     title="Efficient Frontier",
+    #     legend=false,
+    # )
+    # savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_GMRES.png"))
+
 end
 
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_test_solutions.csv"), df_sol_test)
+CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_solutions.csv"), df_sol)
+CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_test_solutions_BS.csv"), df_sol_test_BS)
 CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_BS.csv"), df_weights_BS)
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_CG.csv"), df_weights_CG)
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_GMRES.csv"), df_weights_GMRES)
+# CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_CG.csv"), df_weights_CG)
+# CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_GMRES.csv"), df_weights_GMRES)
