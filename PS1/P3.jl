@@ -190,7 +190,7 @@ plot(plots_p...,
     plot_titlefontsize=14,
     )
 
-savefig(joinpath(@__DIR__, "figure", "problem3_price.png"))
+savefig(joinpath(@__DIR__, "figure", "p3_price.png"))
 
 # Consumption Plots
 plots_c = Any[]
@@ -227,7 +227,7 @@ plot(plots_c...,
     plot_title="Equilibrium " * L"c_{i,1}" * " vs. " * L"\alpha_1", 
     plot_titlefontsize=14,
     )
-savefig(joinpath(@__DIR__, "figure", "problem3_consumption.png"))
+savefig(joinpath(@__DIR__, "figure", "p3_consumption.png"))
 
 df_02[!, :diff] = df_02.c1_1 .- df_02.c2_1
 idx_02 = argmin(abs.(df_02.diff))
@@ -253,11 +253,11 @@ eq_df = DataFrame(
 )
 
 # Complete DataFrames and Rows satisfying equilibrium condition to CSVs
-out_df02 = joinpath(@__DIR__, "tabular_output", "problem3_df_02.csv")
+out_df02 = joinpath(@__DIR__, "tabular_output", "p3_df_02.csv")
 CSV.write(out_df02, df_02)
 
-out_df5 = joinpath(@__DIR__, "tabular_output", "problem3_df_5.csv")
+out_df5 = joinpath(@__DIR__, "tabular_output", "p3_df_5.csv")
 CSV.write(out_df5, df_5)
 
-out_eq = joinpath(@__DIR__, "tabular_output", "problem3_equilibria.csv")
+out_eq = joinpath(@__DIR__, "tabular_output", "p3_equilibria.csv")
 CSV.write(out_eq, eq_df)

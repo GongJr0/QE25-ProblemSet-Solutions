@@ -50,7 +50,7 @@ df = DataFrame(Beta = formatted_betas,
                 rel_resid_x1 = [rel[1] for rel in relative_resid],
                 cond_num = cond_num)
 
-out = joinpath(@__DIR__, "tabular_output", "problem2_results.csv")                
+out = joinpath(@__DIR__, "tabular_output", "p2_results.csv")                
 CSV.write(out, df)
 # On the pattern of condition number relative to β:
 #

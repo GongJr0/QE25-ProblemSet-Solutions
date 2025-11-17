@@ -50,5 +50,5 @@ end
 
 plot(plots..., layout = (2, 2))
 
-out = joinpath(@__DIR__, "figure", "problem1.png")
+out = joinpath(@__DIR__, "figure", "p1.png")
 savefig(out)

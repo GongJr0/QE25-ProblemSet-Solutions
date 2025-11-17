@@ -85,15 +85,15 @@ diag_dominance(AᵀA)  # false
 issymmetric(AᵀA) & isposdef(AᵀA)  # true
 
 # Therefore, we can use Conjugate Gradient method.
-function solve_cg(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
+function solve_cg(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing, verbose=false)
     A, b, n = get_system(μ̄, returns, init_weights)
     AᵀA = A' * A
     Aᵀb = A' * b
     x, ch = cg(AᵀA, Aᵀb, log=true)
-    if ch.isconverged
+    if ch.isconverged && verbose
         println("CG converged in ", ch.iters, " iterations.")
-    else
-        println("CG did not converge.")
+    elseif !ch.isconverged
+        println("CG did not converge.") # Print non-convergence message regardless of verbosity
     end
     if sum(x[1:n]) ≈ 1.0 == false
         @info "Weights sum to 1.0"
@@ -121,7 +121,7 @@ function precond_gmres(A)
     return P
 end
 
-function solve_gmres(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
+function solve_gmres(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing, verbose=false)
     A, b, n = get_system(μ̄, returns, init_weights)
     P = precond_gmres(A)
     P⁻¹ = inv(P)
@@ -129,9 +129,9 @@ function solve_gmres(μ̄, returns=asset_returns; return_lambda=false, init_weig
     Pb = P⁻¹ * b
 
     x, ch = gmres(PA, Pb, log=true)
-    if ch.isconverged
+    if ch.isconverged && verbose
         println("GMRES converged in ", ch.iters, " iterations.")
-    else
+    elseif !ch.isconverged
         println("GMRES did not converge.")
     end
     if sum(x[1:n]) ≈ 1.0 == false
@@ -160,13 +160,13 @@ sum_w_bs = sum(weights_bs[1:n])
 rresid_bs = rel_resid_norm(A, weights_bs, b)
 
 println("\nCG Info:")
-weights_cg = @time solve_cg(μ̄_test, asset_returns; return_lambda=true)
+weights_cg = @time solve_cg(μ̄_test, asset_returns; return_lambda=true, verbose=true)
 sum_w_cg = sum(weights_cg[1:n])
 μ_cg = dot(mean.(eachcol(asset_returns)), weights_cg[1:n])
 rresid_cg = rel_resid_norm(A, weights_cg, b)
 
 println("\nGMRES Info:")
-weights_gmres = @time solve_gmres(μ̄_test, asset_returns; return_lambda=true)
+weights_gmres = @time solve_gmres(μ̄_test, asset_returns; return_lambda=true, verbose=true)
 sum_w_gmres = sum(weights_gmres[1:n])
 μ_gmres = dot(mean.(eachcol(asset_returns)), weights_gmres[1:n])
 rresid_gmres = rel_resid_norm(A, weights_gmres, b)
@@ -179,7 +179,7 @@ df_sol = DataFrame(
 )
 
 sort!(df_sol, :RRN)
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_solutions.csv"), df_sol)
+CSV.write(joinpath(@__DIR__, "tabular_output", "p4_solutions.csv"), df_sol)
 
 # Portfolio variance from the min(RRN) solution (BS)
 function get_pvar(weights, returns=asset_returns)
@@ -200,6 +200,7 @@ test_μ̄ = .01:(.1-.01)/50:.1 # 50 equidistance steps where  μ̄ ∈ [0.01, 0.
 solutions_BS = [solve_backslash(test_μ̄[1]; return_lambda=false)]
 σ²ₚ_list_BS = [get_pvar(solutions_BS[1])]
 
+##
 # solutions_CG = [solve_cg(test_μ̄[1]; return_lambda=false)]
 # σ²ₚ_list_CG = [get_pvar(solutions_CG[1])]
 
@@ -212,6 +213,7 @@ for μ̄ in test_μ̄[2:end]
     push!(solutions_BS, w_bs)
     push!(σ²ₚ_list_BS, get_pvar(w_bs))
 
+    ##
     # w_cg = solve_cg(μ̄; 
     # return_lambda=false, 
     # init_weights=solutions_CG[end])
@@ -231,6 +233,7 @@ df_sol_test_BS = DataFrame(
     σₚ = sqrt.(σ²ₚ_list_BS)
 )
 
+##
 # df_sol_test_CG = DataFrame(
 #     μ̄ = test_μ̄,
 #     σ²ₚ = σ²ₚ_list_CG,
@@ -243,27 +246,27 @@ df_sol_test_BS = DataFrame(
 #     σₚ = sqrt.(σ²ₚ_list_GMRES)
 # )
 
-#
 
 # Efficient frontier plot
 
 @suppress_err begin # MatPlotLib warning about color mapping
     p = scatter(
-        df_sol_test.σₚ,
-        df_sol_test.μ̄;
+        df_sol_test_BS.σₚ,
+        df_sol_test_BS.μ̄;
         xlabel=L"\sigma_p",
         ylabel=L"\bar{\mu}",
-        title="Efficient Frontier",
+        title="Efficient Frontier [BS]",
         legend=false,
     )
-    savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_BS.png"))
+    savefig(joinpath(@__DIR__, "figure", "p4_efficient_frontier_BS.png"))
 
+    ##
     # p = scatter(
     #     df_sol_test_CG.σₚ,
     #     df_sol_test_CG.μ̄;
     #     xlabel=L"\sigma_p",
     #     ylabel=L"\bar{\mu}",
-    #     title="Efficient Frontier",
+    #     title="Efficient Frontier [CG]",
     #     legend=false,
     # )
     # savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_CG.png"))
@@ -273,15 +276,15 @@ df_sol_test_BS = DataFrame(
     #     df_sol_test_GMRES.μ̄;
     #     xlabel=L"\sigma_p",
     #     ylabel=L"\bar{\mu}",
-    #     title="Efficient Frontier",
+    #     title="Efficient Frontier [GMRES]",
     #     legend=false,
     # )
-    # savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_GMRES.png"))
+    savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier_GMRES.png"))
 
 end
 
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_solutions.csv"), df_sol)
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_test_solutions_BS.csv"), df_sol_test_BS)
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_BS.csv"), df_weights_BS)
-# CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_CG.csv"), df_weights_CG)
-# CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_GMRES.csv"), df_weights_GMRES)
+CSV.write(joinpath(@__DIR__, "tabular_output", "p4_solutions.csv"), df_sol)
+CSV.write(joinpath(@__DIR__, "tabular_output", "p4_test_solutions_BS.csv"), df_sol_test_BS)
+CSV.write(joinpath(@__DIR__, "tabular_output", "p4_weights_BS.csv"), df_weights_BS)
+# CSV.write(joinpath(@__DIR__, "tabular_output", "p4_weights_CG.csv"), df_weights_CG)
+# CSV.write(joinpath(@__DIR__, "tabular_output", "p4_weights_GMRES.csv"), df_weights_GMRES)
