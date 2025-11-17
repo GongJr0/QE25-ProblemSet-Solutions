@@ -1,4 +1,4 @@
-using DataFrames, CSV, IterativeSolvers, LinearAlgebra, Plots
+using DataFrames, CSV, IterativeSolvers, LinearAlgebra, Plots, Suppressor
 pyplot()  # Swithced backend due to dodgy rendering of LaTeX labels in default backend.
 
 # ============== Problem 4 ==================
@@ -105,11 +105,29 @@ function solve_cg(μ̄, returns=asset_returns; return_lambda=false, init_weights
     return x
 end
 
+function precond_gmres(returns=asset_returns)
+    Σ = cov(Matrix(returns))
+    n = size(Σ, 1)
+
+    P = zeros(n + 2, n + 2)
+    for i in 1:n
+        P[i, i] = Σ[i, i]
+    end
+    P[n+1, 1:n] .= 0.0
+    P[n+2, 1:n] .= 0.0
+
+    P[n+1, n+1] = 1.0
+    P[n+2, n+2] = 1.0
+    return P
+end
+
 function solve_gmres(μ̄, returns=asset_returns; return_lambda=false, init_weights=nothing)
     A, b, n = get_system(μ̄, returns, init_weights)
-    AᵀA = A' * A
-    Aᵀb = A' * b
-    x, ch = gmres(AᵀA, Aᵀb, log=true)
+    P = precond_gmres(returns)
+    PA = P' * A
+    Pb = P' * b
+
+    x, ch = gmres(PA, Pb, log=true)
     if ch.isconverged
         println("GMRES converged in ", ch.iters, " iterations.")
     else
@@ -195,16 +213,20 @@ df_sol_test = DataFrame(
 )
 
 # Efficient frontier plot
-p = scatter(
-    df_sol_test.σₚ,
-    df_sol_test.μ̄;
-    xlabel=L"\sigma_p",
-    ylabel=L"\bar{\mu}",
-    title="Efficient Frontier",
-    legend=false,
-)
+
+@suppress_err begin # MatPlotLib warning about color mapping
+    p = scatter(
+        df_sol_test.σₚ,
+        df_sol_test.μ̄;
+        xlabel=L"\sigma_p",
+        ylabel=L"\bar{\mu}",
+        title="Efficient Frontier",
+        legend=false,
+    )
 savefig(joinpath(@__DIR__, "figure", "problem4_efficient_frontier.png"))
+end
+
 CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_test_solutions.csv"), df_sol_test)
-CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_BS.csv"), df_weights)
+CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_BS.csv"), df_weights_BS)
 CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_CG.csv"), df_weights_CG)
 CSV.write(joinpath(@__DIR__, "tabular_output", "problem4_weights_GMRES.csv"), df_weights_GMRES)
