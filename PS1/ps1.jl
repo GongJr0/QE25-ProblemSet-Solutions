@@ -1,4 +1,4 @@
-using Random, Statistics, Distributions,Plots,DataFrames,LaTeXStrings
+using Random, Statistics, Distributions,Plots,DataFrames,LaTeXStrings,CSV,Distributions,LinearAlgebra,IterativeSolvers,PrettyTables
 
 #Problem 1
 
@@ -58,6 +58,8 @@ end
 # Market clearing condition (excess demand for good 1)
 function market_clear(p1, α, σ, ω)
     p2 = 1.0  # normalized
+
+  
     
     c1_1 = marshallian_good1(p1, p2, α[1], σ[1], ω[1][1], ω[1][2])
     c2_1 = marshallian_good1(p1, p2, α[2], σ[2], ω[2][1], ω[2][2])
@@ -246,6 +248,132 @@ savefig("equilibrium_prices_comparison.png")
 eq_both_goods = df_02[c1_1s_02 .== c1_2s_02 .&& c2_1s_02 .== c2_2s_02, :] #there is no such alpha
 
 #Elasticity affects the substituiability between goods. Low elasticity (σ=0.2) means goods are less substitutable, leading to more stable prices and consumption patterns as α changes. High elasticity (σ=5.0) means goods are highly substitutable, causing more significant fluctuations in prices and consumption as α varies.
+
+#Problem 4 
+
+function initialize_matrix(μ,Σ,n,target_return)
+    A = zeros(Float64, n+2, n+2)
+    b = zeros(n+2)
+    b[n+1] = target_return
+    b[n+2] = 1.0
+    A[1:n, 1:n] = Σ
+    A[1:n, n+1] = μ
+    A[1:n, n+2] .= 1.0
+    A[n+1, 1:n] = μ'
+    A[n+2, 1:n] .= 1.0
+    return A,b
+end
+
+function relative_residual_norm(A, x, b)
+    r = b-A*x
+    return norm(r) / norm(b)
+end
+
+function solve_portfolio_backslash(A, b, n)
+    time = @elapsed x = A \ b
+    portfolio_weights = x[1:n]
+    lagrange_return = x[n+1]
+    lagrange_weight = x[n+2]
+    iterations = 1  # Direct method = 1 "iteration"
+    return portfolio_weights, lagrange_return, lagrange_weight, iterations, time,x
+end
+
+
+function solve_portfolio_cg(A, b, n)
+    if issymmetric(A) && isposdef(A)
+        time = @elapsed x, history = IterativeSolvers.cg(A, b, log=true)
+        portfolio_weights = x[1:n]
+        lagrange_return = x[n+1]
+        lagrange_weight = x[n+2]
+        iterations = history.iters
+        return portfolio_weights, lagrange_return, lagrange_weight, iterations, time,x
+    else
+        println("CG method couldn't be applied")
+        return nothing, nothing, nothing, 0, 0.0, nothing
+    end
+end
+
+function solve_portfolio_gmres(A, b, n)
+    time = @elapsed x, history = IterativeSolvers.gmres(A, b, log=true)
+    portfolio_weights = x[1:n]
+    lagrange_return = x[n+1]
+    lagrange_weight = x[n+2]
+    iterations = history.iters
+    return portfolio_weights, lagrange_return, lagrange_weight, iterations, time,x
+end
+
+
+#4.1 and 4.2
+cd(@__DIR__)
+markowitz = CSV.read("asset_returns.csv", DataFrame)
+Σ = cov(Matrix(markowitz))
+n = 500
+μ = mean.(eachcol(markowitz))
+target_return = 0.10
+
+#4.3
+A,b = initialize_matrix(μ,Σ,n,target_return)
+condition_number = cond(A, 2)
+
+#4.4
+
+#4.4.a
+portfolio_weights, lagrange_return, lagrange_weight, iter_bs, time_bs, x_backslash = solve_portfolio_backslash(A, b, n)
+
+#4.4.b
+A_normal = A'*A
+b_normal = A'*b
+zeros_at_diagonal = any(diag(A_normal) .== 0.0)
+is_diag_dominant = all(abs(A_normal[i,i]) > sum(abs.(A_normal[i,j]) for j in 1:size(A_normal,1) if j != i) for i in 1:size(A_normal,1))
+#Matrix does not have zeros at diagonal but its not diagonally dominant thus we cant implement gauss-seidel method
+
+#4.4.c
+portfolio_weights_cg, lagrange_return_cg, lagrange_weight_cg, iter_cg, time_cg, x_cg = solve_portfolio_cg(A_normal, b_normal, n)
+
+#4.4.d
+portfolio_weights_gmres, lagrange_return_gmres, lagrange_weight_gmres, iter_gmres, time_gmres,x_gmres = solve_portfolio_gmres(A,b,n)
+
+# 4.4.e
+    P = zeros(Float64, n+2, n+2)
+    P[1:n, 1:n] = Diagonal(Σ)
+    P[n+1, n+1] = 1.0
+    P[n+2, n+2] = 1.0
+    P_inv = inv(P)
+
+# Manually apply preconditioning
+A_precond = P_inv * A
+b_precond = P_inv * b
+    
+
+portfolio_weights_precond, lagrange_return_precond, lagrange_weight_precond, iter_prec, time_prec, x_precond = solve_portfolio_gmres(A_precond, b_precond, n)
+
+backslah_n_err = relative_residual_norm(A, x_backslash, b)
+cg_n_err = relative_residual_norm(A_normal, x_cg, b_normal)
+gmres_n_err = relative_residual_norm(A, x_gmres, b)
+precond_n_err = relative_residual_norm(A, x_precond, b)
+
+
+#5
+results = DataFrame(
+    Method = ["Backslash (\\)", "CG (A'A)", "GMRES", "GMRES + Precond"],
+    Iterations = [iter_bs, iter_cg, iter_gmres, iter_prec],
+    Time_seconds = [time_bs, time_cg, time_gmres, time_prec],
+    relative_residual_norm = [backslah_n_err, cg_n_err, gmres_n_err, precond_n_err]
+)
+
+pretty_table(results)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
