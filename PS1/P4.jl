@@ -1,4 +1,4 @@
-using DataFrames, CSV, IterativeSolvers, LinearAlgebra, Plots, Suppressor
+using Statistics, DataFrames, CSV, IterativeSolvers, LinearAlgebra, Plots, Suppressor
 pyplot()  # Swithced backend due to dodgy rendering of LaTeX labels in default backend.
 
 # ============== Problem 4 ==================
