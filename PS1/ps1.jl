@@ -1,5 +1,5 @@
 using Random, Statistics, Distributions,Plots,DataFrames,LaTeXStrings,CSV,Distributions,LinearAlgebra,IterativeSolvers,PrettyTables
-
+pyplot()
 #Problem 1
 
 function clt(n, λ=1, r=1000)
@@ -408,43 +408,46 @@ markowitz_results = DataFrame(
 pretty_table(markowitz_results)
 
 #6.1
+target_returns = Float64[]
+std_devs = Float64[]
+iterations_list = Int[]
+actual_returns = Float64[]
 
-println("\n=== Testing with TERRIBLE initial guess (×1000 scale) ===")
-x_prev = randn(n+2) .* 1000  # Very bad random initial guess
+x_prev = zeros(n+2)*0  # Start from zeros
 
-ert_range = 0.01:0.0018:0.10
-for i in ert_range
-    A, b = initialize_matrix(μ, Σ, n, i)
+ert_range = range(0.01, 0.10, length=50)  # Exactly 50 values
+
+for (idx, target_μ) in enumerate(ert_range)
+    A, b = initialize_matrix(μ, Σ, n, target_μ)
     
-    x = copy(x_prev)
-    r_initial = norm(b - A*x)
+    portfolio_weights, _, _, iterations, time, x_prev = solve_portfolio_gmres(A, b, n; x0=x_prev)
     
-    history = IterativeSolvers.gmres!(x, A, b, log=true)
-    
-    r_final = norm(b - A*x)
-    iterations = history[2].iters
-    
-    portfolio_weights = x[1:n]
     var = portfolio_weights' * Σ * portfolio_weights
     stdev = sqrt(var[])
+    actual_return = dot(portfolio_weights, μ)
     
-    println("Target Return: $i, Std Dev: $stdev, Iterations: $iterations, Initial Res: $(round(r_initial, digits=2)), Final Res: $(round(r_final, sigdigits=3))")
-    
-    x_prev = x  # Keep using bad guess (don't warm start)
-    # OR: x_prev = randn(n+2) .* 1000  # Generate new bad guess each time
-end
+    push!(target_returns, target_μ)
+    push!(std_devs, stdev[])
+    push!(iterations_list, iterations)
+    push!(actual_returns, actual_return)
 
-println("\n=== Testing with WARM START (previous solution) ===")
-x_prev = randn(n+2) .* 1000  # Start from zeros
-
-for i in ert_range
-    A, b = initialize_matrix(μ, Σ, n, i)
-    portfolio_weights_bs, _, _, iterations, _, x_prev = solve_portfolio_gmres(A, b, n; x0=x_prev)
-    var = portfolio_weights_bs' * Σ * portfolio_weights_bs
-    stdev = sqrt(var[])
-    println("Target Return: $i, Std Dev: $stdev, Iterations: $iterations")
 end
-    
+efficient_frontier = DataFrame(
+    Target_Return = target_returns,
+    Std_Dev = std_devs,
+    Iterations = iterations_list,
+    Actual_Return = actual_returns
+)
+pretty_table(efficient_frontier)
+
+scatter(efficient_frontier.Std_Dev, efficient_frontier.Target_Return,
+        xlabel=L"\sigma_p",
+        ylabel=L"\bar{\mu_p}",
+        title="Efficient Frontier",
+        markerstrokewidth=0.5,
+        legend=false)
+savefig("figures/efficient_frontier_scatter.png")
+  
 
 
 
