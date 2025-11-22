@@ -279,27 +279,31 @@ function solve_portfolio_backslash(A, b, n)
 end
 
 
-function solve_portfolio_cg(A, b, n)
+function solve_portfolio_cg(A, b, n; x0=zeros(n+2))
     if issymmetric(A) && isposdef(A)
-        time = @elapsed x, history = IterativeSolvers.cg(A, b, log=true)
+        x = copy(x0)
+        time = @elapsed history = IterativeSolvers.cg!(x, A, b, log=true)
+        iterations = history[2].iters
+        
         portfolio_weights = x[1:n]
         lagrange_return = x[n+1]
         lagrange_weight = x[n+2]
-        iterations = history.iters
-        return portfolio_weights, lagrange_return, lagrange_weight, iterations, time,x
+        return portfolio_weights, lagrange_return, lagrange_weight, iterations, time, x
     else
         println("CG method couldn't be applied")
         return nothing, nothing, nothing, 0, 0.0, nothing
     end
 end
 
-function solve_portfolio_gmres(A, b, n)
-    time = @elapsed x, history = IterativeSolvers.gmres(A, b, log=true)
+function solve_portfolio_gmres(A, b, n; x0=zeros(n+2))
+    x = copy(x0)
+    time = @elapsed history = IterativeSolvers.gmres!(x, A, b, log=true)
+    iterations = history[2].iters
+    
     portfolio_weights = x[1:n]
     lagrange_return = x[n+1]
     lagrange_weight = x[n+2]
-    iterations = history.iters
-    return portfolio_weights, lagrange_return, lagrange_weight, iterations, time,x
+    return portfolio_weights, lagrange_return, lagrange_weight, iterations, time, x
 end
 
 
@@ -318,11 +322,12 @@ condition_number = cond(A, 2)
 #4.4
 
 #4.4.a
-portfolio_weights, lagrange_return, lagrange_weight, iter_bs, time_bs, x_backslash = solve_portfolio_backslash(A, b, n)
+portfolio_weights_bs, lagrange_return, lagrange_weight, iter_bs, time_bs, x_backslash = solve_portfolio_backslash(A, b, n)
 
 #4.4.b
 A_normal = A'*A
 b_normal = A'*b
+conditiion_number_normal = cond(A_normal, 2)
 zeros_at_diagonal = any(diag(A_normal) .== 0.0)
 is_diag_dominant = all(abs(A_normal[i,i]) > sum(abs.(A_normal[i,j]) for j in 1:size(A_normal,1) if j != i) for i in 1:size(A_normal,1))
 #Matrix does not have zeros at diagonal but its not diagonally dominant thus we cant implement gauss-seidel method
@@ -361,8 +366,85 @@ results = DataFrame(
     relative_residual_norm = [backslah_n_err, cg_n_err, gmres_n_err, precond_n_err]
 )
 
+println(results)
 pretty_table(results)
 
+#6
+pws = [portfolio_weights_bs, portfolio_weights_cg, portfolio_weights_gmres, portfolio_weights_precond]
+method_names = ["Backslash", "CG", "GMRES", "GMRES+Precond"]
+
+# Arrays to store table results
+weight_sums = Float64[]
+expected_returns = Float64[]
+variances = Float64[]
+std_devs = Float64[]
+weight_ok = String[]
+return_ok = String[]
+
+for (i, p) in enumerate(pws)
+    wsum = sum(p)
+    eret = dot(p, μ)
+    var = p' * Σ * p
+    stdev = sqrt(var)
+
+    push!(weight_sums, wsum)
+    push!(expected_returns, eret)
+    push!(variances, var[])
+    push!(std_devs, stdev[])
+    push!(weight_ok, isapprox(wsum, 1.0, atol=1e-8) ? "✓" : "✗")
+    push!(return_ok, isapprox(eret, target_return, atol=1e-8) ? "✓" : "✗")
+end
+
+markowitz_results = DataFrame(
+    Method = method_names,
+    Sum_of_Weights = weight_sums,
+    Expected_Return = expected_returns,
+    Variance = variances,
+    Std_Dev = std_devs,
+    Weights_OK = weight_ok,
+    Return_OK = return_ok
+)
+
+pretty_table(markowitz_results)
+
+#6.1
+
+println("\n=== Testing with TERRIBLE initial guess (×1000 scale) ===")
+x_prev = randn(n+2) .* 1000  # Very bad random initial guess
+
+ert_range = 0.01:0.0018:0.10
+for i in ert_range
+    A, b = initialize_matrix(μ, Σ, n, i)
+    
+    x = copy(x_prev)
+    r_initial = norm(b - A*x)
+    
+    history = IterativeSolvers.gmres!(x, A, b, log=true)
+    
+    r_final = norm(b - A*x)
+    iterations = history[2].iters
+    
+    portfolio_weights = x[1:n]
+    var = portfolio_weights' * Σ * portfolio_weights
+    stdev = sqrt(var[])
+    
+    println("Target Return: $i, Std Dev: $stdev, Iterations: $iterations, Initial Res: $(round(r_initial, digits=2)), Final Res: $(round(r_final, sigdigits=3))")
+    
+    x_prev = x  # Keep using bad guess (don't warm start)
+    # OR: x_prev = randn(n+2) .* 1000  # Generate new bad guess each time
+end
+
+println("\n=== Testing with WARM START (previous solution) ===")
+x_prev = randn(n+2) .* 1000  # Start from zeros
+
+for i in ert_range
+    A, b = initialize_matrix(μ, Σ, n, i)
+    portfolio_weights_bs, _, _, iterations, _, x_prev = solve_portfolio_gmres(A, b, n; x0=x_prev)
+    var = portfolio_weights_bs' * Σ * portfolio_weights_bs
+    stdev = sqrt(var[])
+    println("Target Return: $i, Std Dev: $stdev, Iterations: $iterations")
+end
+    
 
 
 
