@@ -1,4 +1,4 @@
-using NLsolve, QuadGK, Random, DataFrames, PrettyTables, Printf, Plots
+using NLsolve, QuadGK, Random, DataFrames, PrettyTables, Plots
 Random.seed!(0)
 pyplot()
 
