@@ -150,5 +150,5 @@ plot(
     grid = true
 )
 
-out = joinpath(@__DIR__, "figure", "share_v_risk_aversion.png")
+out = joinpath(@__DIR__, "figure", "p1_share_v_risk_aversion.png")
 savefig(out)
