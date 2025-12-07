@@ -61,7 +61,7 @@ w_4=optimal_portfolio(W,Rf,γ,μ,σ)
 println("The optimal share of w_o is: ",w_4)
 
 #5
-graph_γ=range(0.1,10,length=10)
+graph_γ=range(0.1,10)
 
 function grapher(W,Rf,graph_γ,μ,σ)
     w_optimal=[]
@@ -70,6 +70,6 @@ function grapher(W,Rf,graph_γ,μ,σ)
         w_o=optimal_portfolio(W,Rf,γ,μ,σ)
         push!(w_optimal,w_o)
     end
-    plot(w_optimal,graph_γ)                     #need to add the labels later on
+    plot(graph_γ, w_optimal,linewidth=2, xlabel="relative risk aversion",ylabel="Optimal share of risky assets",Title="Impact of risk aversion on the composition of a portfolio")                     #need to add the labels later on
 end
 grapher(1,1.02,graph_γ,0.05,0.10)
