@@ -260,4 +260,4 @@ hline!(p3, [0.0], linestyle=:dash) # mark 0
 display(p3)
 
 idx_first_pos = findfirst(Vs .> 0.0)
-println("First p where V1(0, 0) > 0: p = ", p_arr[idx_first_pos])
+println("First p where V1(0, 0) > 0: ", p_arr[idx_first_pos])
