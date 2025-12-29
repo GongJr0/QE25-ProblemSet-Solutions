@@ -1,15 +1,15 @@
 using Random, Distributions, Statistics, Plots, LaTeXStrings
 
-
 # ====== Problem Setup (Params, Structs, Funcs) ======
 struct Orchid
     DEAD::Int8  # Dead
-    N_BLM::Int8  # Not Blooming
-    BLM::Int8  # Blooming
+    N_BLM::Int8  # Not Bloomed
+    BLM::Int8  # Bloomed
 end
 O = Orchid(-1, 0, 1)
 
 # Struct val → idx mapper
+# positions: [1: DEAD, 2: N_BLM, 3: BLM]
 o_idx(state::Int8) = state == O.DEAD ? 1 : state == O.N_BLM ? 2 : 3
 
 
