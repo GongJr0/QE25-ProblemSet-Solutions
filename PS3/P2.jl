@@ -176,7 +176,7 @@ println()
 t_arr = [1, 5, 10, 15, 19]
 S_arr = 0:Smax
 p = plot(
-    title=L"Opmtimal Policy at Stress Level $S$",
+    title=L"Optimal Policy at Stress Level $S$",
     xlabel=L"$S$",
     ylabel="Action (0=Wait, 1=Apply Fertilizer)",
 )
@@ -186,7 +186,7 @@ for t in t_arr
     plot!(p, S_arr, actions, label="t=$t", marker=:circle)
 end
 
-# savefig(p, "PS3/figure/p2_policy.png")
+savefig(p, "PS3/figure/p2_policy.png")
 display(p)
 
 # (c) Expected total utility (t=1, O=N_BLM, S=0)
