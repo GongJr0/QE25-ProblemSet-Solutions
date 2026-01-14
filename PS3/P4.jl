@@ -175,61 +175,59 @@ function vfi(params::Params; tol=1e-6, max_iter=1000, verbose=true)
     return V_new, policy, h_grid, e_grid, w_grid, P_w, max_iter
 end
 
-function simulate_path(policy, h0, w0_idx, n_periods, h_grid, w_grid, P_w, params)
+function simulate_path(rng, policy, h0, w0_idx, n_periods, h_grid, w_grid, P_w, params)
 
     h_path = zeros(n_periods)
     w_path = zeros(n_periods)
     e_path = zeros(n_periods)
     c_path = zeros(n_periods)
-    
 
     h_path[1] = h0
     w_idx = w0_idx
-    
-    for t in 1:n_periods
 
+    for t in 1:n_periods
         w_path[t] = w_grid[w_idx]
         h = h_path[t]
-        
+
         e = interpolation(h, w_idx, h_grid, policy)
-        
         e_path[t] = e
-        
+
         c_path[t] = w_path[t] * f_h(h, params) * (1 - e)
-        
+
         if t < n_periods
-    
             h_path[t+1] = h_next(h, e, params)
-            
-            w_idx = sample(1:length(w_grid), Weights(P_w[w_idx, :]))
+            w_idx = sample(rng, 1:length(w_grid), Weights(P_w[w_idx, :]))
         end
     end
-    
+
     return h_path, w_path, e_path, c_path
 end
 
-function simulate_multiple_paths(policy, h0, w0_idx, n_paths, n_periods, 
-                                h_grid, w_grid, P_w, params; seed=7)
-    
-    Random.seed!(seed)
-    
+
+function simulate_multiple_paths(policy, h0, w0_idx, n_paths, n_periods,
+                                 h_grid, w_grid, P_w, params; seed=2026)
+
     all_h_paths = []
     all_w_paths = []
     all_e_paths = []
     all_c_paths = []
-    
+
     for i in 1:n_paths
+        rng = MersenneTwister(seed + i - 1)
+
         h_path, w_path, e_path, c_path = simulate_path(
-            policy, h0, w0_idx, n_periods, h_grid, w_grid, P_w, params
+            rng, policy, h0, w0_idx, n_periods, h_grid, w_grid, P_w, params
         )
+
         push!(all_h_paths, h_path)
         push!(all_w_paths, w_path)
         push!(all_e_paths, e_path)
         push!(all_c_paths, c_path)
     end
-    
+
     return all_h_paths, all_w_paths, all_e_paths, all_c_paths
 end
+
 
 #4.3
 params = Params()
@@ -250,8 +248,8 @@ println()
 
 
 p_education = plot(
-    xlabel = "Human Capital h",
-    ylabel = "Education effort e*(h,w)",
+    xlabel = L"Human\ Capital\ h",
+    ylabel = L"Education\ effort\ e^*(h',w')",
     title = "Optimal Education Choice",
     titlefontsize = 11,
     legend = :topright,
@@ -272,8 +270,8 @@ savefig(p_education, joinpath(@__DIR__, "figure", "education_plot.png"))
 
 
 p_value = plot(
-    xlabel = "Human Capital h",
-    ylabel = "Value V(h,w)",
+    xlabel = L"Human\ Capital\ h",
+    ylabel = L"Value\ V(h',w')",
     title = "Value Function",
     titlefontsize = 11,
     legend = :bottomright,
@@ -293,8 +291,8 @@ savefig(p_value, joinpath(@__DIR__, "figure", "value_plot.png"))
 
 
 p_consumption = plot(
-    xlabel = "Human Capital h",
-    ylabel = "Consumption c*(h,w)",
+    xlabel = L"Human\ Capital\ h",
+    ylabel = L"Consumption\ c^*(h',w')",
     title = "Consumption",
     titlefontsize = 11,
     legend = :outerright,
@@ -328,12 +326,104 @@ all_h, all_w, all_e, all_c = simulate_multiple_paths(
 )
 println("\nSimulation complete")
 
+start_idx = burn_in + 1
+end_idx = burn_in + 100
 
+
+colors = [:blue, :red, :green, :orange, :purple]
+
+
+p_h = plot(
+    title = "Human Capital Over Time",
+    xlabel = L"Period\ (after\ burn-in)",
+    ylabel = L"Human\ Capital\ h_t",
+    legend = :bottomright,
+    grid = true
+)
+
+for i in 1:n_paths
+    periods = 1:100
+    h_plot = all_h[i][start_idx:end_idx]
+    plot!(p_h, periods, h_plot, 
+          label = "Path $i", 
+          color = colors[i], 
+          lw = 1.5, 
+          alpha = 0.8)
+end
+
+savefig(p_h, joinpath(@__DIR__, "figure", "simulation_human_capital.png"))
+println("Saved: simulation_human_capital.png")
+
+
+p_w = plot(
+    title = "Wage Shocks Over Time",
+    xlabel = L"Period\ (after\ burn-in)",
+    ylabel = L"Wage\ w_t",
+    legend = :topright,
+    grid = true
+)
+
+for i in 1:n_paths
+    periods = 1:100
+    w_plot = all_w[i][start_idx:end_idx]
+    plot!(p_w, periods, w_plot, 
+          label = "Path $i", 
+          color = colors[i], 
+          lw = 1.5, 
+          alpha = 0.8)
+end
+
+savefig(p_w, joinpath(@__DIR__, "figure", "simulation_wage.png"))
+println("Saved: simulation_wage.png")
+
+
+p_e = plot(
+    title = "Education Time Over Time",
+    xlabel = L"Period\ (after\ burn-in)",
+    ylabel = L"Education\ e_t",
+    legend = :bottomright,
+    grid = true
+)
+
+for i in 1:n_paths
+    periods = 1:100
+    e_plot = all_e[i][start_idx:end_idx]
+    plot!(p_e, periods, e_plot, 
+          label = "Path $i", 
+          color = colors[i], 
+          lw = 1.5, 
+          alpha = 0.8)
+end
+
+savefig(p_e, joinpath(@__DIR__, "figure", "simulation_education.png"))
+println("Saved: simulation_education.png")
+
+
+p_c = plot(
+    title = "Consumption Over Time",
+    xlabel = L"Period\ (after\ burn-in)",
+    ylabel = L"Consumption\ c_t",
+    legend = :topright,
+    grid = true
+)
+
+for i in 1:n_paths
+    periods = 1:100
+    c_plot = all_c[i][start_idx:end_idx]
+    plot!(p_c, periods, c_plot, 
+          label = "Path $i", 
+          color = colors[i], 
+          lw = 1.5, 
+          alpha = 0.8)
+end
+
+savefig(p_c, joinpath(@__DIR__, "figure", "simulation_consumption.png"))
+println("Saved: simulation_consumption.png")
 
 n_periods_analysis = n_periods - burn_in 
 
 
-all_y = Float64[]       #
+all_y = Float64[]       
 all_e_corr = Float64[]  
 all_w_corr = Float64[]  
     
@@ -354,25 +444,12 @@ n_obs = length(all_y)
 corr_y_e = cor(all_y, all_e_corr)
 corr_w_e = cor(all_w_corr, all_e_corr)
     
-    
-
-println("\nCorrelation between labor earnings and education effort:")
+    println("\nCorrelation between labor earnings and education effort:")
 println("\ncor(y, e) = $(round(corr_y_e, digits=4))")
     
 
 println("\nCorrelation between wage shock and education effort:")
 println("\ncor(w, e) = $(round(corr_w_e, digits=4))")
-    
 
-
-
-
-
-
-
-
-
-
-
-
-
+#The correlation between labor earnings and education effort is negative because when people earn more, the time they spend studying becomes more costly in terms of forgone income. As a result, they tend to shift effort away from education and toward work.
+#Similarly, the correlation between wage shocks and education effort is negative because a higher-than-expected wage makes working immediately more attractive. This raises the opportunity cost of education, so individuals are less likely to put effort into their studies.
