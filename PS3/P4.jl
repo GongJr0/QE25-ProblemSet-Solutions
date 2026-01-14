@@ -45,7 +45,7 @@ function wage_process(N, params::Params)
 end
 
 function set_up_grids(params::Params)
-    h_max = 15
+    h_max = 15 # set as 15 because according to the question descrption h' becomes flat around 13.8 the additional 1.2 is kinda buffer, thus we set the max to 15.
     h_grid = collect(0.0:0.01:h_max)
     e_grid = collect(0.0:0.01:1.0)
     w_grid, P_w = wage_process(7, params)
@@ -266,7 +266,7 @@ for (i_w, label, color) in zip(w_indices, w_labels, colors)
 end
 
 
-savefig(p_education, joinpath(@__DIR__, "figure", "education_plot.png"))
+savefig(p_education, joinpath(@__DIR__, "figure", "p4_education_plot.png"))
 
 
 p_value = plot(
@@ -287,7 +287,7 @@ for (i_w, label, color) in zip(w_indices, w_labels, colors)
 end
 
 
-savefig(p_value, joinpath(@__DIR__, "figure", "value_plot.png"))
+savefig(p_value, joinpath(@__DIR__, "figure", "p4_value_plot.png"))
 
 
 p_consumption = plot(
@@ -311,7 +311,7 @@ for (i_w, label, color) in zip(w_indices, w_labels, colors)
     )
 end
 
-savefig(p_consumption, joinpath(@__DIR__, "figure", "consumption_plot.png"))
+savefig(p_consumption, joinpath(@__DIR__, "figure", "p4_consumption_plot.png"))
 
 #4.5
 n_paths = 5
@@ -351,8 +351,8 @@ for i in 1:n_paths
           alpha = 0.8)
 end
 
-savefig(p_h, joinpath(@__DIR__, "figure", "simulation_human_capital.png"))
-println("Saved: simulation_human_capital.png")
+savefig(p_h, joinpath(@__DIR__, "figure", "p4_simulation_human_capital.png"))
+println("Saved: p4_simulation_human_capital.png")
 
 
 p_w = plot(
@@ -373,8 +373,8 @@ for i in 1:n_paths
           alpha = 0.8)
 end
 
-savefig(p_w, joinpath(@__DIR__, "figure", "simulation_wage.png"))
-println("Saved: simulation_wage.png")
+savefig(p_w, joinpath(@__DIR__, "figure", "p4_simulation_wage.png"))
+println("Saved: p4_simulation_wage.png")
 
 
 p_e = plot(
@@ -395,8 +395,8 @@ for i in 1:n_paths
           alpha = 0.8)
 end
 
-savefig(p_e, joinpath(@__DIR__, "figure", "simulation_education.png"))
-println("Saved: simulation_education.png")
+savefig(p_e, joinpath(@__DIR__, "figure", "p4_simulation_education.png"))
+println("Saved: p4_simulation_education.png")
 
 
 p_c = plot(
@@ -417,8 +417,8 @@ for i in 1:n_paths
           alpha = 0.8)
 end
 
-savefig(p_c, joinpath(@__DIR__, "figure", "simulation_consumption.png"))
-println("Saved: simulation_consumption.png")
+savefig(p_c, joinpath(@__DIR__, "figure", "p4_simulation_consumption.png"))
+println("Saved: p4_simulation_consumption.png")
 
 # If we take a look at the plots generated for the path 3, we can clearly see that the output aligns with our expectations. There are sharp decreases in education effort whenever there is a spike in the wage shocks. This behavior is consistent with the model's prediction that higher wages increase the opportunity cost of education, leading individuals to allocate more time to work and less to education.
 
