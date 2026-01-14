@@ -420,6 +420,8 @@ end
 savefig(p_c, joinpath(@__DIR__, "figure", "simulation_consumption.png"))
 println("Saved: simulation_consumption.png")
 
+# If we take a look at the plots generated for the path 3, we can clearly see that the output aligns with our expectations. There are sharp decreases in education effort whenever there is a spike in the wage shocks. This behavior is consistent with the model's prediction that higher wages increase the opportunity cost of education, leading individuals to allocate more time to work and less to education.
+
 n_periods_analysis = n_periods - burn_in 
 
 
