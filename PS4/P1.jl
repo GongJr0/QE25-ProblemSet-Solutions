@@ -1,4 +1,4 @@
-using Parameters, QuantEcon, LinearAlgebra, Plots, LaTeXStrings, Random, Statistics, Optim, PrettyTables
+using Parameters, QuantEcon, LinearAlgebra, Plots, LaTeXStrings, Random, Statistics, Optim, PrettyTables,DataFrames
 pyplot()
 
 #Setting up the parameters
@@ -424,7 +424,7 @@ end
 hline!(p_gamma2[4], [a_bar], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_gamma2, joinpath(@__DIR__, "figures", "policies_standard_gamma2.png"))
+savefig(p_gamma2, joinpath(@__DIR__, "figures", "p1_policies_standard_gamma2.png"))
 
 
 p_gamma2_ces = plot(layout=(2,2), size=(1400, 1000))
@@ -491,7 +491,7 @@ end
 hline!(p_gamma2_ces[4], [a_bar], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_gamma2_ces, joinpath(@__DIR__, "figures", "policies_ces_gamma2.png"))
+savefig(p_gamma2_ces, joinpath(@__DIR__, "figures", "p1_policies_ces_gamma2.png"))
 
 # Select three income states for gamma=10
 Nz2 = length(z_grid2)
@@ -572,7 +572,7 @@ end
 hline!(p_gamma10[4], [a_bar2], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_gamma10, joinpath(@__DIR__, "figures", "policies_standard_gamma10.png"))
+savefig(p_gamma10, joinpath(@__DIR__, "figures", "p1_policies_standard_gamma10.png"))
 
 p_gamma10_ces = plot(layout=(2,2), size=(1400, 1000))
 
@@ -638,7 +638,7 @@ end
 hline!(p_gamma10_ces[4], [a_bar2], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_gamma10_ces, joinpath(@__DIR__, "figures", "policies_ces_gamma10.png"))
+savefig(p_gamma10_ces, joinpath(@__DIR__, "figures", "p1_policies_ces_gamma10.png"))
 
 function compute_euler_errors(c_policy, a_policy, a_grid, z_grid, P_z, params)
     Na = length(a_grid)
@@ -761,7 +761,7 @@ end
 vline!(p_ee_std1[2], [a_bar1], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_ee_std1, joinpath(@__DIR__, "figures", "euler_errors_standard_gamma2.png"))
+savefig(p_ee_std1, joinpath(@__DIR__, "figures", "p1_euler_errors_standard_gamma2.png"))
 
 
 
@@ -797,7 +797,7 @@ end
 vline!(p_ee_ces1[2], [a_bar1], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_ee_ces1, joinpath(@__DIR__, "figures", "euler_errors_ces_gamma2.png"))
+savefig(p_ee_ces1, joinpath(@__DIR__, "figures", "p1_euler_errors_ces_gamma2.png"))
 
 # Select three income states for gamma=10
 Nz2 = length(z_grid2)
@@ -845,7 +845,7 @@ end
 vline!(p_ee_std2[2], [a_bar2], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_ee_std2, joinpath(@__DIR__, "figures", "euler_errors_standard_gamma10.png"))
+savefig(p_ee_std2, joinpath(@__DIR__, "figures", "p1_euler_errors_standard_gamma10.png"))
 
 
 p_ee_ces2 = plot(layout=(1,2), size=(1400, 500))
@@ -880,7 +880,7 @@ end
 vline!(p_ee_ces2[2], [a_bar2], label = "Borrowing limit ā",
     color = :black, linestyle = :dash, lw = 1.5)
 
-savefig(p_ee_ces2, joinpath(@__DIR__, "figures", "euler_errors_ces_gamma10.png"))
+savefig(p_ee_ces2, joinpath(@__DIR__, "figures", "p1_euler_errors_ces_gamma10.png"))
 
 
 function print_ee_stats(ee, name)
@@ -1027,6 +1027,10 @@ stats_ces1 = compute_simulation_statistics(a_sim_ces1, c_sim_ces1, z_sim_ces1, e
 stats_std2 = compute_simulation_statistics(a_sim_std2, c_sim_std2, z_sim_std2, ee_sim_std2, a_grid2, burn_in=burn_in)
 stats_ces2 = compute_simulation_statistics(a_sim_ces2, c_sim_ces2, z_sim_ces2, ee_sim_ces2, a_grid2, burn_in=burn_in)
 
+stats_keys_list = ["mean_a", "std_a", "min_a", "max_a", 
+                   "mean_c", "std_c", "min_c", "max_c",
+                   "frac_constrained", "autocorr_a", "autocorr_c", 
+                   "corr_c_z", "corr_a_z"]
 
 
 # SIMULATION RESULTS TABLE
@@ -1035,10 +1039,10 @@ df_stats = DataFrame(
                      "Mean consumption (c̄)", "Std dev consumption (σc)", "Min consumption", "Max consumption",
                      "Frac. at constraint", "Autocorr(aₜ,aₜ₋₁)", "Autocorr(cₜ,cₜ₋₁)",
                      "Corr(cₜ,zₜ)", "Corr(aₜ,zₜ)"],
-    γ2_Std        = [round(stats_std1[k], digits=4) for (k,_) in stats_keys],
-    γ2_CES        = [round(stats_ces1[k], digits=4) for (k,_) in stats_keys],
-    γ10_Std       = [round(stats_std2[k], digits=4) for (k,_) in stats_keys],
-    γ10_CES       = [round(stats_ces2[k], digits=4) for (k,_) in stats_keys]
+    γ2_Std        = [round(stats_std1[k], digits=4) for k in stats_keys_list],
+    γ2_CES        = [round(stats_ces1[k], digits=4) for k in stats_keys_list],
+    γ10_Std       = [round(stats_std2[k], digits=4) for k in stats_keys_list],
+    γ10_CES       = [round(stats_ces2[k], digits=4) for k in stats_keys_list]
 )
 println(df_stats)
 
@@ -1079,7 +1083,7 @@ plot!(p_ts_gamma2[4], xlabel=L"Period", ylabel=L"Log_{10}\ Euler\ Error",
 plot!(p_ts_gamma2[4], periods, ee_sim_std1[plot_start:plot_end], label="Standard VFI", lw=2, color=:blue)
 plot!(p_ts_gamma2[4], periods, ee_sim_ces1[plot_start:plot_end], label="CES VFI",      lw=2, color=:red, linestyle=:dash)
 
-savefig(p_ts_gamma2, joinpath(@__DIR__, "figures", "timeseries_gamma2.png"))
+savefig(p_ts_gamma2, joinpath(@__DIR__, "figures", "p1_timeseries_gamma2.png"))
 
 
 # γ = 10: same layout
@@ -1103,7 +1107,7 @@ plot!(p_ts_gamma10[4], xlabel=L"Period", ylabel=L"Log_{10}\ Euler\ Error",
       title="Euler Errors (γ=10)", titlefontsize=11, legend=:topright, grid=true)
 plot!(p_ts_gamma10[4], periods, ee_sim_std2[plot_start:plot_end], label="Standard VFI", lw=2, color=:blue)
 plot!(p_ts_gamma10[4], periods, ee_sim_ces2[plot_start:plot_end], label="CES VFI",      lw=2, color=:red, linestyle=:dash)
-savefig(p_ts_gamma10, joinpath(@__DIR__, "figures", "timeseries_gamma10.png"))
+savefig(p_ts_gamma10, joinpath(@__DIR__, "figures", "p1_timeseries_gamma10.png"))
 
 
 # In solving the model, I was initially confused about why the CES value function iteration produced results so different from standard VFI.
