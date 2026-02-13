@@ -455,3 +455,4 @@ println("\ncor(w, e) = $(round(corr_w_e, digits=4))")
 
 #The correlation between labor earnings and education effort is negative because when people earn more, the time they spend studying becomes more costly in terms of forgone income. As a result, they tend to shift effort away from education and toward work.
 #Similarly, the correlation between wage shocks and education effort is negative because a higher-than-expected wage makes working immediately more attractive. This raises the opportunity cost of education, so individuals are less likely to put effort into their studies.
+
