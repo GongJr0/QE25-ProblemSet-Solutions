@@ -1,0 +1,88 @@
+\section{Numerical Methods}\label{sec:num_methods}
+\subsection{Grid Construction}\label{subsec:grid_construction}
+
+We constructed grids for capital and for productivity.
+We will denote said grids as $K$ and $Z$ respectively.
+As we had to accommodate the $AR(1)$ process for productivity, we took $Z$ as a baseline grid and formed $K$ to fit the expectations created by $Z$.
+Given $Z$, our main benchmark for the $K$ specifications was eliminating (i.e. minimizing) any value maximizing capital at the grid boundaries.
+
+\subsubsection{Z Grid}\label{subsubsec:z_grid}
+
+The $Z$ grid is constructed by the Rouwenhorst method which is a discretization method for approximating continuous state space Markov processes.
+The process allow us to create a discrete grid that captures the properties of the underlying continous $AR(1)$ process for productivity.
+
+\subsubsection{K Grid}\label{subsubsec:k_grid}
+
+The $K$ grid's construction depends on $Z$; specifically, we use $k^*(z)$, the optimal capital choice for a given productivity level $z$, to determine the range of our $K$ grid.
+We solve the convex cost case $\{F=0, \ \rho_s = 1\}$ and solve for the steady state $k_{ss}$.
+The grid is then defined in the interval $[\alpha k_{ss}, \beta k_{ss}]$ where $\alpha$ and $\beta$ parameters are chosen to ensure optimal capital choices never fall outside the grid.
+To achieve this, we minimize the point mass of choices at the grid boundaries through the bound scaling parameters:
+
+\begin{equation}
+    \begin{aligned}
+        \hat{\alpha} &= \underset{\alpha}{\operatorname{argmin}}\ R_{\alpha}:=\frac{\sum \mathbbm{1}_{\{k^*(z) < \alpha k_{ss}\}}}{N} \to \hat{\alpha} = 0.01 \ (R_{\alpha} = 0.00\%)\\
+        \hat{\beta} &= \underset{\beta}{\operatorname{argmin}}\ R_{\beta}:=\frac{\sum \mathbbm{1}_{\{k^*(z) > \beta k_{ss}\}}}{N} \to \hat{\beta} = 25 \ (R_{\beta} = 0.20\%)
+    \end{aligned}
+\end{equation}
+
+\noindent\textbf{NOTE:} We chose not to push $\hat{\beta}$ further than 25 to capture all outliers. We achieved $R_\beta = 0.2\%$ at $\beta = 25$ and tested that the next increment would happen around $\beta=50$. 
+At which point we decided accepting $R_\beta = 0.2\%$ as a reasonable tolerance since a marginal reduction in $R_\beta$ would cost increasingly larger $\beta$ specifications.
+
+\vspace{\baselineskip}
+
+With the above result yielding a grid over $[0.01 k_{ss}, 100 k_{ss}]$, we observe multiple orders of magnitude between the grid bounds.
+Therefore, we elect to use a non-linear spacing for the $K$ grid to emphasize the lower end while covering the upper extremes.
+A $\log$-spaced grid satisfies this requirement and is constructed by defining an auxiliary grid $K_{aux}$ with linear spacing over $[\log(\alpha k_{ss}), \log(\beta k_{ss})]$ and then exponentiating the values to obtain the final $K$ grid:
+\begin{equation}
+    \begin{aligned}
+        K_{aux} &= \{\ln(\alpha k_{ss}), \ln(\alpha k_{ss}) + \Delta, \ln(\alpha k_{ss}) + 2\Delta, \dots, \ln(\beta k_{ss})\} \\
+        K &= \{\exp(k_i)\ \forall k_i \in K_{aux}\}
+    \end{aligned}
+\end{equation}
+
+\subsection{Interpolation}\label{subsec:interpolation}
+With a discrete grid, we need to either choose the nearest grid point or interpolate to evaluate the value function at non-grid points.
+We choose to use a weighted interpolation of the two nearest grid points for capital.
+Interpolation helps sanitize the kinks in value and policy functions, making them more interpretable.
+
+\vspace{\baselineskip}
+
+Our interpolation method normalized the distance from/to the nearest grid points over the total distance between the two grid points encapsulating the optimal value.
+Denoting a general case where we want to interpolate a function $f$ at a point $x$ that lies between two grid points $\bar{x}_i$ and $\bar{x}_{i+1}$, the interpolation is given by:
+
+\begin{equation}
+    \begin{aligned}
+        f(x) &= w_i f(\bar{x}_i) + w_{i+1} f(\bar{x}_{i+1}) \\
+        w_i &= \frac{\bar{x}_{i+1} - x}{\bar{x}_{i+1} - \bar{x}_i} \\
+        w_{i+1} &= \frac{x - \bar{x}_i}{\bar{x}_{i+1} - \bar{x}_i} \\
+    \end{aligned}
+\end{equation}
+
+
+\subsection{Value Function Iteration}\label{subsec:vfi}
+The Value Function Iteration (VFI) process is aided by a bellman operator that uses golden-section search to find the optimal capital choice.
+Golden-section search refers to an iterative optimization technique for finding the extrema of a unimodal function over some interval $[a, b]$.
+The method works by evaluating the function at two interior points, $c$ and $d$, which are determined by the golden ratio $\phi = \frac{1 + \sqrt{5}}{2}$.
+
+\vspace{\baselineskip}
+
+Additionally, we apply a Howard improvement every 5 iterations to speed up convergence.
+Howard improvement begins by picking the optimal policy from the previous iteration and evaluating the value function under this policy for $n$ periods (or to infinity by analytical definition).
+Afterwards, the policy is updated by finding the optimal choice under the new value function and the process is repeated until convergence.
+Howard improvement can significantly reduce the number of iterations in the outer VFI loop necessary for convergence, especially when the policy function stabilizes before the value function does.
+
+\subsection{MoM Estimation Setup}\label{subsec:smm_setup}
+We use the given LRD moments as targets and match the moments from a stationary distribution ($\mu$) computed under some parameter composition $\{\gamma_{adj}, F, \rho_s\}$.
+The parameters are updated by minimizing the L2 distance between target and output moments using the Nelder-Mead optimization method. 
+However, we prefer running the optimization in an unconstrained space, so appropriate transformations are applied to the parameters prior to the optimization.
+
+\begin{equation}
+    \begin{aligned}
+         \gamma_{adj}\in\ (0, \infty) \to \gamma_{adj}'\in\mathbb{R} &\quad\mid\quad \gamma_{adj}' = \ln(\gamma_{adj}) \\
+        F\in\ [0, \infty) \to F'\in\mathbb{R} &\quad\mid\quad F' = \max\{10^{-12},\ \ln(F)\} \\
+        \rho_s\in\ [0, 1] \to \rho_s'\in\mathbb{R} &\quad\mid\quad \rho_s' = \operatorname{logit}(\rho_s) = \ln\left(\frac{\rho_s}{1-\rho_s}\right)
+    \end{aligned}
+\end{equation}
+
+With said transformations, the Nelder-Mead optimization can run unbounded over the set $\{\gamma_{adj}', F', \rho_s'\}$
+as long as we use the inverse transformations to compute moments inside the objective function.

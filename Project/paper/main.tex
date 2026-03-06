@@ -1,0 +1,50 @@
+\documentclass{article}
+
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{siunitx}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bbm}
+\usepackage{hyperref}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\usepackage{csquotes}
+\usepackage{indentfirst}
+\usepackage{float}
+\usepackage{bbm}
+\usepackage{ragged2e}
+\usepackage{titlesec}
+
+\usepackage[style=apa,backend=biber]{biblatex}
+\addbibresource{ref.bib}
+
+\hypersetup{
+    breaklinks, % allow line breaks in links
+    colorlinks, % allow colors for links
+    allcolors=black, % disable obnoxious colors for \ref, \cite, etc. (optional)
+    urlcolor=blue, % choose color for \url (default)
+}
+
+\title{\includegraphics[width=\textwidth]{fig/logo}\\[2cm]\textbf{QE 2025 Final Project Report}}
+\author{
+    Ege Güney Kıymaç
+    \and
+    Cem Köymen
+    \and
+    Mateusz Hann
+    }
+\date{\today}
+
+\begin{document}
+\onehalfspacing\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+\input{intro}
+\input{numerical_methods}
+\input{interpretation}
+
+\end{document}
